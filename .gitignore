@@ -1,0 +1,25 @@
+# Vivado junk to ignore
+*.jou
+*.log
+*.str
+.cache/
+.hw/
+.ip_user_files/
+.runs/
+.sim/
+.gen/
+.srcs/
+*.xpr
+*.xsa
+*.bit
+*.vcd
+*.wdb
+*.wcfg
+.DS_Store
+Thumbs.db
+*~
+*.swp
+.vscode/
+*.out
+*.exe
+*.o

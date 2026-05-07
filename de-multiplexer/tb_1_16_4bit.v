@@ -36,7 +36,4 @@ module tb_1_16_4bit;
     endmodule
 
     //altought this works, real demuxes arent like these, since real demuxes gives out one output rest all output ports are zero,
-    //therefore i seaarched and came to know about case statements
-
-    //back to 1:4 demux using case statement
-    
+    //therefore i seaarched and came to know about case statements    

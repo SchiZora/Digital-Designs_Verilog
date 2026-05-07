@@ -1,7 +1,7 @@
 `timescale 1ns / 1ps
 //first, there is a difference between 16:1 mux and a 16 bit mux
 //my dumbahh got condfused in them, 
-//this is a 16:1 mux, i.e. 16 inputs : 1 outputs, niggeru-chan♡
+//this is a 16:1 mux, i.e. 16 inputs : 1 outputs ♡
 
 //altough we specifically use seprate wire here, we'll use array later in demux and index through wires  
 

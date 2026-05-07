@@ -12,7 +12,7 @@ module mux_2_1(
     assign a1 = a & ~s;
     assign b1 = b & s;
     assign y = a1 | b1;
-    ^^^ THIS IS GREAT, well too much, BUT THIS IS MUCH BETTER: ∨∨∨∨∨∨ */
+    ^^^ THIS IS GREAT, well too much, BUT THIS IS MUCH BETTER (for understanding): ∨∨∨∨∨∨ */
     
     assign y = (a & ~s) | (b & s);
 
@@ -56,7 +56,7 @@ module mux4_1_4bit(
     /*
     {4{expression}}
     = repeat expression 4 times*/
-    //avoid confusion niggeru-chan
+    //avoid confusion
 
     //DATAFLOW MODELING
     assign y = (a & {4{~s1 & ~s2}} | b & {4{~s1 & s2}} | c & {4{s1 & ~s2}} | d & {4{s1 & s2}});

@@ -52,7 +52,5 @@ endmodule
 
 /*one thing here, since verilog isn't used much, and caused an error due to version (verilog-2001) 
     I'll be using systemverilog for next projects
-    it wont change anything as verilog is a subset of systemverilog
-    so just all files will be saved as .sv instead of .v 
-    and i will move on to systemverilog eventually.*/
-//Niggeru-chan♡ 
+    it wont change anything as verilog is a subset of systemverilog*/
+//♡ 

@@ -65,8 +65,27 @@ This helped me understand how real Digital Logic works
 * Xilinx Vivado
 * Xilinx ISE
 * Icarus Verilog
+* Yosys
 * GTKWave
+* Netlistsvg (Github)
 * FPGA Development Board: Numato Mimas Spartan6 FPGA
+
+---
+
+## runall script
+
+The repository contains a script that will automate most of the workflow that i learned and wrote with the help ai, this script basically runs all the commands after writing the verilog code and uses all the softwares mentioned. Altough i recommend trying and learning these commmands before and then using this [runall](runall.sh) script.
+
+The wrokflow goes as-
+
+    1. Clear previous generated files 
+    2. Compile by iverilog
+    3. Simulate by VVP
+    4. Read Wavedumped signals by GTKWave from testbench
+    5. Ask for a top module
+    6. Sythesize (Optimize, check, map and route to standard cell library) by Yosys
+    7. Generate a json schematic file 
+    8. Generate a svg schematic file by Netlistsvg (from git repo)
 
 ---
 

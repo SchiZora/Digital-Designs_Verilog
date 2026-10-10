@@ -2,50 +2,89 @@
 
 #I'm still learning writing scripts, please dont judge >_<
 #bash is strict even about spaces
-#Thought to me by chatgpt, claude, gemini -Thankyou 
+#Thought to me by chatgpt and claude -Thankyou 
 
-function synthesis {
-
-#decide hierarchy
-read -r -p "Enter Top Module name (Enter blank to let Yosys decide)- " TOP_MODULE
-if [[ -z "$TOP_MODULE" ]]; then 
-    SYNTH_CMD="synth"
-else
-    SYNTH_CMD="synth -top  $TOP_MODULE"
-fi
-
-#yosys -p : executes string of commands
-yosys -p "
-    read_verilog $module
-    $SYNTH_CMD
-    stat
-    check
-    write_verilog ${OUT%.OUT}_synth.v
-    write_json ${OUT%.OUT}_synth.json
-"
-
-#check for Yosys errors
-if [ $? -ne 0]; then
-    echo "Yosys Sytnthesis failed."
-    exit 1
-fi
-
-#checking for json
-if [ ! -f "${OUT%.OUT}_synth.json" ]  
-then 
-    echo "Json not generated..."
-    exit 1
-fi
-
-#generating Schematic
-echo""
-echo""
-echo "Generating Schematic svg..."
-netlistsvg "${OUT%.OUT}_synth.json" -o "${OUT%.OUT}_synth.svg"
-echo "Opening Schematic..."
-firefox "${OUT%.OUT}_synth.svg"
+#checks the tools if they exists
+#create a custom commmand/function
+check() {
+    command -v "$1" >/dev/null 2>&1 || {
+        #DISCARDS TEH OUTPUT AND EROOR
+        echo "ERROR: '$1' was not found."
+        return 1
+        #RETURN EXITS THE FUNCTION
+    }
 }
 
+#choice input with local variable ans and an infinite loop for y or n as input
+choice() {
+    local ans 
+    while true; do
+        read -r -n 1 -p "$1 [y|n]: " ans
+        echo ""
+        case "$ans" in
+            [Yy]) return 0 ;;   #success
+            [Nn]) return 1 ;;   #failed
+            *) echo "Invalid input." ;;     #default case
+        esac
+    done 
+    #end case branch ;;
+    #anything else *
+    #end of pattern )
+}
+
+synthesis() {
+    local top_module synth_cmd prep_cmd
+    
+    check yosys ||      return 1
+    check netlistsvg || return 1 
+
+    read -r -p "Enter Top Module name (Enter blank to let Yosys decide)- " top_module
+    if [[ -z "$top_module" ]]; then 
+        synth_cmd="synth"
+        prep_cmd="prep"
+    else
+        synth_cmd="synth -top  $top_module"
+        prep_cmd="prep -top $top_module"
+    fi
+
+    #yosys -p : executes a command of strings
+    yosys -p "
+        read_verilog $module;
+        $synth_cmd;
+        stat;
+        check;
+        write_verilog ${BASE}_synth.v
+    "
+    if [ $? -ne 0 ]; then
+        echo "Yosys Synthesis failed...."
+        return 1
+    fi
+
+    yosys -q -p "
+        read_verilog $module;
+        $prep_cmd;
+        write_json ${BASE}_synth.json
+    "
+    if [ $? -ne 0 ]; then
+        echo "Yosys prep (Schematic JSON) failed...."
+        return 1
+    fi    
+
+    #checking for json
+    if [ ! -f "${BASE}_synth.json" ]  
+    then 
+        echo "Json not generated..."
+        return 1
+    fi
+
+    #generating Schematic svg
+    echo""
+    echo "Generating Schematic svg..."
+    netlistsvg "${BASE}_synth.json" -o "${BASE}_synth.svg" || return 1
+    echo "Opening Schematic..."
+    firefox "${BASE}_synth.svg" >/dev/null 2>&1 &
+    #2>&1 & : discards outputs and continues the script without waiting
+}
 
 echo "-------------------------------------------------"
 echo "Simulation flow Started."
@@ -53,26 +92,33 @@ echo ""
 
 #picks the first Argument
 module=$1
-OUT="${module%.v}.OUT"      #anything after % is stripped and .OUT is appended to this
 
-#checks for no arguments
+#check for no arguments or missing files
 if [[ -z "$module" ]]; then
     echo "Invalid Input: NO arguments given."
-    echo "Please write the main module first then the testbenches"
+    echo "Please write the main module first."
     exit 1
 fi
+#check if file exists
+if [[ ! -f "$module" ]]; then
+    echo "ERROR: file '$module' not found."
+    exit 1
+fi 
 
-#this clears old files:
-echo "Cleaning previous files..."
-rm -f "${OUT}.vcd"
-rm -f "${OUT}.svg"
-rm -f "${OUT}.json"
-rm -f "${OUT}_synth.v"
+check iverilog || exit 1
+check vvp || exit 1
 
-#this compiles the verilog file:
+BASE="${module%.v}"
+OUT="${BASE}.OUT"
+
+echo ""
+echo "Cleaning Previous Files..."
+rm -f "$OUT" "${BASE}_synth.v" "${BASE}_synth.json" "${BASE}_synth.svg" "${BASE}.vcd"
+echo ""
+
+#compiling verilog using iverilog
 echo "Compiling Verilog..."
-iverilog -o "$OUT" "$@"     #produces the binary <___>.OUT
-
+iverilog -o "$OUT" "$@"
 #compilation error detection
 if [ $? -ne 0 ]     #$?: op of last command if not equal to 0
 then
@@ -80,45 +126,38 @@ then
     exit 1
 fi 
 
-#this runs the simulation:
 echo "Starting simulation..."
 vvp "$OUT"
-
-#| this is a pipe, sends output of one command as input to another
-#takes only 1st vcd, $(Command substitution to store its output inside a var) 
-WAVE=$(ls *.vcd 2>/dev/null | head -n 1)
-echo "Simulation completed dumped signals into $WAVE."
-echo "Waveform Generated."
-
-#this opens .vcd file and stores it in WAVE
-if [ -z  "$WAVE" ]  #checks if wave/string is empty
-then 
-    echo "No waveform found"
+#simulation error detection
+if [ $? -ne 0 ]     #$?: op of last command if not equal to 0
+then
+    echo "ERROR: Simulation failed."
     exit 1
+fi 
+
+WAVE=$(find . -maxdepth 1 -name '*.vcd' -newer "$OUT" | head -n 1)
+
+if [[ -z "$WAVE" ]]; then
+    echo "No Waveform found..."
+    echo "Did you add the \$dumpfile and \$dumpvars in testbench? "
 else
-    while true; do
-    echo ""
-    read -r -n 1 -p "Do you also want to Synthesize and generate a Schematic .svg image? [y|n]: " choice
-    echo ""
-    
-    if [[ "$choice" =~ ^[Nn]$ ]]; then
-        break           #break
-    elif [[ "$choice" =~ ^[Yy]$ ]]; then
-        synthesis       #function call
-        break
-    else 
-        echo "Invalid Input."
-    fi
-    done
-    echo "Opening GTKwave $WAVE"
-    gtkwave $WAVE
+    echo "Simulation completed dumped signals into $WAVE."
 fi
 
+#options
+echo ""
+if choice "Synthesize and Generate a schematic SVG?"; then
+    synthesis || echo "Synthesis Failed, Continuing..."
+else
+    echo "Skipped Schematic Generation."
+fi
 
+echo ""
+if [[ -n "$WAVE" ]] && choice "Open $WAVE Waveform through GTKWAVE?"; then
+    echo "Opening GTKWave $WAVE"
+    gtkwave "$WAVE" >/dev/null 2>&1 &
+fi
 
 echo "" 
 echo "Simulation Completed."
 echo "-------------------------------------------------"
-
-#Author: SchiZora!
-#feel free to modify and add to this script!
